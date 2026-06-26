@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌧 StakePulse — Rains Live</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{--bg:#080d12;--bg2:#0d1520;--bg3:#111d2a;--border:#1a2d3d;--text:#c8d8e8;--text2:#6a8a9a;--text3:#3a5a6a;--green:#00ff88;--amber:#ffd700;--orange:#ff8c00;--red:#ff3355;--blue:#00d4ff;--purple:#a855f7;--cyan:#00d4ff;}
+[data-theme="light"]{--bg:#f0f4f8;--bg2:#fff;--bg3:#e8edf2;--border:#d0dae4;--text:#1a2a3a;--text2:#4a6a7a;--text3:#8aada8;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 0%,rgba(0,212,255,.03),transparent 60%);pointer-events:none;}
+.lang-toggle{position:fixed;bottom:20px;left:20px;display:flex;gap:4px;z-index:200;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:4px;}
+.lang-btn{background:transparent;border:none;color:var(--text2);font-size:12px;font-weight:700;padding:4px 10px;border-radius:5px;cursor:pointer;transition:all .2s;}
+.lang-btn.active{background:var(--bg3);color:var(--text);}
+.lang-btn:hover{color:var(--text);}
+
+/* Header */
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:50;}
+.header-left{display:flex;align-items:center;gap:10px;}
+.header-title{font-size:15px;font-weight:800;}
+.header-sub{font-size:11px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:4px;font-family:monospace;}
+.btn{border:none;padding:6px 12px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;}
+.btn:hover{opacity:.8;}
+.btn-blue{background:var(--blue);color:#000;}
+.btn-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border);}
+.btn-active{background:rgba(0,212,255,.15);color:var(--blue);border:1px solid rgba(0,212,255,.3);}
+.badge-live{background:rgba(0,255,136,.1);color:var(--green);font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;border:1px solid rgba(0,255,136,.3);display:flex;align-items:center;gap:5px;}
+.badge-live::before{content:'';width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Stats bar */
+.stats-bar{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--border);flex-shrink:0;}
+.stat-box{background:var(--bg2);padding:10px 12px;text-align:center;}
+.stat-value{font-size:18px;font-weight:800;font-family:monospace;line-height:1.2;}
+.stat-label{font-size:9px;color:var(--text2);margin-top:2px;text-transform:uppercase;letter-spacing:.5px;}
+.stat-sub{font-size:10px;color:var(--text3);margin-top:1px;font-family:monospace;}
+
+/* Filters */
+.filters{display:flex;align-items:center;gap:6px;padding:8px 1.5rem;background:var(--bg2);border-bottom:1px solid var(--border);flex-wrap:wrap;flex-shrink:0;}
+.filter-select,.filter-input{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--text);outline:none;}
+.filter-input{width:150px;}
+.filter-label{font-size:11px;color:var(--text2);}
+.period-tabs{display:flex;gap:3px;}
+.period-tab{padding:4px 10px;font-size:11px;border-radius:5px;cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-weight:600;transition:all .15s;}
+.period-tab.active{background:rgba(0,212,255,.15);border-color:var(--blue);color:var(--blue);}
+.chat-tabs{display:flex;gap:3px;flex-wrap:wrap;}
+.chat-tab{padding:3px 8px;font-size:11px;border-radius:5px;cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--text2);transition:all .15s;}
+.chat-tab.active{background:rgba(0,255,136,.15);border-color:var(--green);color:var(--green);}
+
+/* Layout */
+.layout{display:grid;grid-template-columns:1fr 300px;gap:14px;padding:1.25rem 1.5rem;flex:1;overflow:hidden;min-height:0;}
+
+/* Feed */
+.feed-panel{display:flex;flex-direction:column;gap:6px;overflow-y:auto;padding-right:4px;}
+.feed-panel::-webkit-scrollbar{width:3px;}
+.feed-panel::-webkit-scrollbar-thumb{background:var(--border);}
+
+.section-title{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+.rain-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:12px;animation:slideIn .2s ease;transition:border-color .2s;}
+.rain-card:hover{border-color:rgba(0,212,255,.3);}
+.rain-card.mega{border-color:rgba(0,255,136,.4);background:linear-gradient(135deg,rgba(0,255,136,.04),var(--bg2));}
+.rain-card.big{border-color:rgba(0,212,255,.3);}
+.rain-card.new{animation:newRain .5s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
+@keyframes newRain{0%{border-color:var(--green);box-shadow:0 0 12px rgba(0,255,136,.2)}100%{border-color:var(--border);box-shadow:none}}
+
+.rain-emoji{font-size:24px;flex-shrink:0;width:36px;text-align:center;}
+.rain-body{flex:1;min-width:0;}
+.rain-top{display:flex;align-items:center;gap:8px;margin-bottom:3px;}
+.rain-sender{font-size:14px;font-weight:800;}
+.rain-chat-tag{font-size:10px;background:var(--bg3);border:1px solid var(--border);padding:1px 6px;border-radius:4px;color:var(--text2);}
+.rain-time{font-size:10px;color:var(--text3);font-family:monospace;}
+.rain-recipients{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rain-right{text-align:right;flex-shrink:0;}
+.rain-amount{font-size:16px;font-weight:800;color:var(--green);font-family:monospace;}
+.rain-amount.mega{font-size:20px;color:var(--amber);}
+.rain-currency{font-size:10px;color:var(--text2);text-transform:uppercase;}
+.rain-per{font-size:10px;color:var(--text3);font-family:monospace;}
+.rain-nb{font-size:11px;color:var(--blue);margin-top:2px;}
+
+.empty{text-align:center;padding:3rem 2rem;color:var(--text2);}
+.empty-icon{font-size:48px;margin-bottom:1rem;opacity:.5;}
+.loader{display:flex;align-items:center;justify-content:center;padding:3rem;gap:10px;color:var(--text2);}
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Sidebar */
+.sidebar-right{display:flex;flex-direction:column;gap:10px;overflow-y:auto;}
+.sidebar-right::-webkit-scrollbar{width:3px;}
+.sidebar-right::-webkit-scrollbar-thumb{background:var(--border);}
+.widget{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;flex-shrink:0;}
+.widget-header{padding:9px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:7px;}
+.widget-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;flex:1;}
+.widget-sub{font-size:10px;color:var(--text2);}
+.widget-body{padding:4px 0;}
+.lb-row{display:flex;align-items:center;gap:8px;padding:6px 12px;transition:background .15s;}
+.lb-row:hover{background:var(--bg3);}
+.lb-rank{font-size:12px;font-weight:700;color:var(--text2);min-width:20px;text-align:center;}
+.lb-name{font-size:12px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lb-val{font-size:12px;font-weight:700;font-family:monospace;}
+.lb-sub{font-size:10px;color:var(--text2);}
+.chart-wrap{padding:10px 12px 8px;}
+.chart-title{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+
+/* Flash alert rain */
+.rain-flash-container{position:fixed;top:60px;right:20px;z-index:300;display:flex;flex-direction:column;gap:6px;pointer-events:none;}
+.rain-flash{background:var(--bg2);border:1px solid var(--green);border-radius:10px;padding:12px 16px;min-width:240px;animation:flashIn .3s ease;box-shadow:0 4px 20px rgba(0,255,136,.15);}
+.rain-flash.mega{border-color:var(--amber);box-shadow:0 4px 20px rgba(255,215,0,.2);}
+@keyframes flashIn{from{transform:translateX(60px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes flashOut{to{transform:translateX(60px);opacity:0}}
+.flash-emoji{font-size:20px;margin-bottom:2px;}
+.flash-sender{font-weight:800;font-size:13px;}
+.flash-detail{font-size:11px;color:var(--text2);margin-top:2px;}
+.flash-amount{font-family:monospace;font-size:14px;font-weight:800;color:var(--green);margin-top:3px;}
+.flash-amount.mega{color:var(--amber);}
+
+/* Gros alert overlay */
+.mega-overlay{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#001a08,#002a10);border:2px solid var(--green);border-radius:14px;padding:18px 28px;z-index:200;text-align:center;box-shadow:0 8px 40px rgba(0,255,136,.3);animation:alertIn .4s ease;min-width:300px;}
+@keyframes alertIn{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.mega-overlay.uber{border-color:var(--amber);background:linear-gradient(135deg,#1a1000,#2a1a00);box-shadow:0 8px 40px rgba(255,215,0,.3);}
+.mo-emoji{font-size:40px;margin-bottom:6px;}
+.mo-title{font-size:11px;font-weight:800;letter-spacing:2px;color:var(--green);margin-bottom:4px;}
+.mega-overlay.uber .mo-title{color:var(--amber);}
+.mo-sender{font-size:22px;font-weight:900;}
+.mo-amount{font-size:30px;font-weight:900;color:var(--green);font-family:monospace;}
+.mega-overlay.uber .mo-amount{color:var(--amber);}
+.mo-sub{font-size:11px;color:var(--text2);margin-top:4px;}
+
+.confetti{position:fixed;top:-10px;pointer-events:none;z-index:999;animation:fall linear forwards;}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:0;}}
+
+.status-bar{background:var(--bg);border-top:1px solid var(--border);padding:4px 1.5rem;font-size:11px;color:var(--text2);display:flex;justify-content:space-between;flex-shrink:0;font-family:monospace;}
+
+@media(max-width:900px){.layout{grid-template-columns:1fr;}.sidebar-right{display:none;}.stats-bar{grid-template-columns:repeat(3,1fr);}}
+</style>
+</head>
+<body>
+
+<div class="lang-toggle"><button class="lang-btn active" onclick="setLang('fr')">🇫🇷 FR</button><button class="lang-btn" onclick="setLang('en')">🇬🇧 EN</button></div>
+<div class="header">
+  <div class="header-left">
+    <span style="font-size:22px">🌧</span>
+    <span class="header-title">StakePulse — Rains Live</span>
+    <span class="header-sub" id="proxy-status" data-fr="Connexion..." data-en="Connecting...">Connexion...</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span class="badge-live" id="live-badge" style="display:none">LIVE</span>
+    <button class="btn btn-ghost" onclick="toggleTheme()">🌙</button>
+    <button class="btn btn-blue" onclick="loadData()" data-fr="↻ Refresh" data-en="↻ Refresh">↻ Refresh</button>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-box"><div class="stat-value" style="color:var(--blue)" id="s-total">—</div><div class="stat-label" data-fr="Total rains" data-en="Total rains">Total rains</div></div>
+  <div class="stat-box"><div class="stat-value" style="color:var(--green)" id="s-today">—</div><div class="stat-label" data-fr="Aujourd'hui" data-en="Today">Aujourd'hui</div><div class="stat-sub" id="s-today-usd">—</div></div>
+  <div class="stat-box"><div class="stat-value" style="color:var(--amber)" id="s-usd24h">—</div><div class="stat-label" data-fr="Volume 24h" data-en="24h volume">Volume 24h</div><div class="stat-sub" id="s-count24h">—</div></div>
+  <div class="stat-box"><div class="stat-value" style="color:var(--orange)" id="s-top-rainer">—</div><div class="stat-label" data-fr="Top rainer" data-en="Top rainer">Top rainer</div><div class="stat-sub" id="s-top-rainer-count">—</div></div>
+  <div class="stat-box"><div class="stat-value" style="color:var(--purple)" id="s-avg">—</div><div class="stat-label" data-fr="Moy. / rain" data-en="Avg. / rain">Moy. / rain</div></div>
+  <div class="stat-box"><div class="stat-value" style="color:var(--red)" id="s-record">—</div><div class="stat-label" data-fr="Record" data-en="Record">Record</div><div class="stat-sub" id="s-record-who">—</div></div>
+</div>
+
+<div class="filters">
+  <span class="filter-label" data-fr="Période :" data-en="Period:">Période :</span>
+  <div class="period-tabs">
+    <div class="period-tab active" onclick="setPeriod('all')" data-period="all" data-fr="Tout" data-en="All">Tout</div>
+    <div class="period-tab" onclick="setPeriod('today')" data-period="today" data-fr="Aujourd'hui" data-en="Today">Aujourd'hui</div>
+    <div class="period-tab" onclick="setPeriod('24h')" data-period="24h">24h</div>
+    <div class="period-tab" onclick="setPeriod('week')" data-period="week" data-fr="7 jours" data-en="7 days">7 jours</div>
+    <div class="period-tab" onclick="setPeriod('month')" data-period="month" data-fr="30 jours" data-en="30 days">30 jours</div>
+  </div>
+  <span class="filter-label" style="margin-left:6px" data-fr="Chat :" data-en="Chat:">Chat :</span>
+  <div class="chat-tabs" id="chat-tabs">
+    <div class="chat-tab active" onclick="setChat('all')" data-chat="all">🌍 Tous</div>
+  </div>
+  <input class="filter-input" id="search-input" id="search-input" placeholder="🔍 Pseudo..." oninput="applyFilters()">
+  <select class="filter-select" id="sort-select" onchange="applyFilters()">
+    <option value="recent" data-fr="Plus récent" data-en="Most recent">Plus récent</option>
+    <option value="amount" data-fr="Plus gros montant" data-en="Highest amount">Plus gros montant</option>
+    <option value="nb" data-fr="Plus de joueurs" data-en="Most players">Plus de joueurs</option>
+  </select>
+  <span id="filter-count" style="font-size:11px;color:var(--text2);margin-left:auto"></span>
+</div>
+
+<div class="layout">
+  <div class="feed-panel" id="feed">
+    <div class="loader"><div class="spinner"></div><span data-fr="Chargement..." data-en="Loading...">Chargement...</span></div>
+  </div>
+  <div class="sidebar-right">
+    <div class="widget">
+      <div class="widget-header"><span>👑</span><span class="widget-title" data-fr="Top Rainers" data-en="Top Rainers">Top Rainers</span><span class="widget-sub" id="lb-period">24h</span></div>
+      <div class="widget-body" id="lb-rainers"><div style="padding:16px;text-align:center;font-size:12px;color:var(--text2)">...</div></div>
+    </div>
+    <div class="widget">
+      <div class="widget-header"><span>🎁</span><span class="widget-title" data-fr="Top Receveurs" data-en="Top Recipients">Top Receveurs</span></div>
+      <div class="widget-body" id="lb-recv"><div style="padding:16px;text-align:center;font-size:12px;color:var(--text2)">...</div></div>
+    </div>
+    <div class="widget">
+      <div class="widget-header"><span>💬</span><span class="widget-title" data-fr="Activité par chat" data-en="Activity by chat">Activité par chat</span></div>
+      <div class="widget-body" id="chat-stats"><div style="padding:16px;text-align:center;font-size:12px;color:var(--text2)">...</div></div>
+    </div>
+    <div class="widget">
+      <div class="chart-wrap">
+        <div class="chart-title" data-fr="📊 Rains par heure (24h)" data-en="📊 Rains per hour (24h)">📊 Rains par heure (24h)</div>
+        <canvas id="hour-chart" height="110"></canvas>
+      </div>
+    </div>
+    <div class="widget">
+      <div class="chart-wrap">
+        <div class="chart-title" data-fr="💰 Volume par devise" data-en="💰 Volume by currency">💰 Volume par devise</div>
+        <canvas id="currency-chart" height="110"></canvas>
+      </div>
+    </div>
+    <div class="widget">
+      <div class="widget-header"><span>🏆</span><span class="widget-title" data-fr="Records" data-en="Records">Records</span></div>
+      <div class="widget-body" id="records-body"><div style="padding:16px;text-align:center;font-size:12px;color:var(--text2)">...</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="status-bar">
+  <span id="status-text" data-fr="En attente..." data-en="Waiting...">En attente...</span>
+  <span id="last-update">—</span>
+</div>
+
+<div class="rain-flash-container" id="flash-container"></div>
+
+<script>
+const PROXY = 'http://localhost:3002';
+
+const CHAT_MAP = {
+  '5a6e5063-0154-47eb-9064-f69547213fe5': {name:'French',    flag:'🇫🇷'},
+  'f0326994-ee9e-411c-8439-b4997c187b95': {name:'English',   flag:'🇬🇧'},
+  '69b2aa0a-53b6-4eed-ada2-ad1d1f4d5bfe': {name:'Russian',   flag:'🇷🇺'},
+  '76609291-6ff5-4d0c-9ed6-0fde1d27de33': {name:'Spanish',   flag:'🇪🇸'},
+  '94e807f3-a2fc-4caf-b0ff-ccc613f71879': {name:'German',    flag:'🇩🇪'},
+  '8590c8cd-65b2-45bd-ab58-973761efd1c6': {name:'Brazil',    flag:'🇧🇷'},
+  '366c04f5-bdea-4415-8e2e-2d6952bf409d': {name:'Portugais', flag:'🇵🇹'},
+  '38530077-e0f1-4cf7-8a92-08e9b3c7b63a': {name:'Hindi',     flag:'🇮🇳'},
+  'e824dc29-68ea-41a4-b69e-60fe31226e43': {name:'Indonesian',flag:'🇮🇩'},
+  '6ceca59c-394a-40e1-a133-0c2999d687bc': {name:'Turkish',   flag:'🇹🇷'},
+  '688cf7f9-00d9-4e26-aa4f-bd7cc47e3ae4': {name:'Filipino',  flag:'🇵🇭'},
+  'c65b4f32-0001-4e1d-9cd6-e4b3538b43ae': {name:'Japanese',  flag:'🇯🇵'},
+  '18f9a83c-0cfb-4c72-8600-23fbe0180e45': {name:'Korean',    flag:'🇰🇷'},
+  '81458dff-a653-4e9d-88c8-91b77f99e45b': {name:'Polish',    flag:'🇵🇱'},
+  '96deb88b-ced9-4b78-b4da-8a65324c2aff': {name:'Chinese',   flag:'🇨🇳'},
+  '8c9994c8-192b-44aa-ac26-f083baf29896': {name:'Vietnamese',flag:'🇻🇳'},
+  '2fcc08ba-9a3d-42bc-9265-90da709a4035': {name:'Arabic',    flag:'🇸🇦'},
+  'f28dcd36-8325-49fa-aa23-a75045b13efa': {name:'Nigerian',  flag:'🇳🇬'},
+  '68bb6e93-f9d6-4a27-875a-3ba28db4fb64': {name:'Pakistan',  flag:'🇵🇰'},
+  '2a1c406f-d3af-4f4c-9d24-b57a592bfa78': {name:'Thai',      flag:'🇹🇭'},
+  '5cba7c13-b384-4c52-ad59-f169b23c62f8': {name:'Sports',    flag:'⚽'},
+  '5d43c7fb-e444-4b0d-aa5e-1e78becd86eb': {name:'Challenges',flag:'🏆'},
+  '9bc0ec54-98fb-4a83-9724-b55709eec990': {name:'Intl',      flag:'🌍'},
+  '67e89019-ae7e-446c-a371-24bae00a6826': {name:'Crash',     flag:'💥'},
+};
+
+// Seuils alertes
+const ALERT_USD  = 20;   // flash latéral
+const MEGA_USD   = 100;  // overlay central
+const UBER_USD   = 500;  // overlay gold + confettis
+
+let allRains = [];
+let filteredRains = [];
+let activePeriod = 'all';
+let activeChat = 'all';
+let prevCount = 0;
+let hourChart = null;
+let currencyChart = null;
+let pollTimer = null;
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function getChatInfo(chatId){return CHAT_MAP[chatId] || {name:chatId?.substring(0,8)||'?', flag:'💬'};}
+function fmtUsd(v){
+  const n=parseFloat(v)||0;
+  if(n>=1000)return `$${(n/1000).toFixed(1)}k`;
+  return `$${n.toFixed(2)}`;
+}
+function timeAgo(ts){
+  const d=(Date.now()-ts)/1000;
+  if(d<60)return 'à l\'instant';
+  if(d<3600)return `${Math.floor(d/60)}min`;
+  if(d<86400)return `${Math.floor(d/3600)}h`;
+  return `${Math.floor(d/86400)}j`;
+}
+function rainEmoji(usdTotal){
+  const u=parseFloat(usdTotal)||0;
+  if(u>=500)return '🚀';
+  if(u>=100)return '🌊';
+  if(u>=50)return '⛈';
+  if(u>=20)return '🌧';
+  if(u>=5)return '🌦';
+  return '🌂';
+}
+function toggleTheme(){
+  const l=document.documentElement.getAttribute('data-theme')==='light';
+  document.documentElement.setAttribute('data-theme',l?'dark':'light');
+  document.querySelector('[onclick="toggleTheme()"]').textContent=l?'🌙':'☀️';
+}
+
+// ── Load ──────────────────────────────────────────────────────────────────
+async function loadData(){
+  try {
+    const r = await fetch(`${PROXY}/rains?period=${activePeriod}&limit=2000`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+
+    const prev = allRains.length;
+    allRains = data.rains || [];
+
+    // Alertes sur les nouvelles rains
+    if (prev > 0 && allRains.length > prev) {
+      allRains.slice(0, allRains.length - prev).forEach(showRainAlert);
+    }
+    prevCount = allRains.length;
+
+    // Stats globales (depuis data.stats)
+    const s = data.stats || {};
+    document.getElementById('s-total').textContent = (data.totalAll||0).toLocaleString();
+    document.getElementById('s-today').textContent = (s.todayCount||0);
+    document.getElementById('s-today-usd').textContent = fmtUsd(s.todayUsd);
+    document.getElementById('s-usd24h').textContent = fmtUsd(s.usd24h);
+    document.getElementById('s-count24h').textContent = `${s.count24h||0} rains`;
+
+    document.getElementById('live-badge').style.display = 'flex';
+    document.getElementById('proxy-status').innerHTML = `<span style="color:var(--green)">✅ ${(data.totalAll||0).toLocaleString()} rains</span>`;
+    document.getElementById('last-update').textContent = lang==='fr'?`Mis à jour ${new Date().toLocaleTimeString('fr-FR')}`:`Updated at ${new Date().toLocaleTimeString('en-GB')}`;
+    document.getElementById('status-text').textContent = lang==='fr'?`${allRains.length} rains chargées · période: ${activePeriod}`:`${allRains.length} rains loaded · period: ${activePeriod}`;
+
+    buildChatTabs();
+    applyFilters();
+    updateStats();
+    updateLeaderboards();
+    updateChatStats();
+    updateHourChart();
+    updateCurrencyChart();
+    updateRecords();
+
+  } catch(err) {
+    document.getElementById('proxy-status').innerHTML = lang==='fr'?`<span style="color:var(--red)">❌ Hors ligne</span>`:`<span style="color:var(--red)">❌ Offline</span>`;
+    document.getElementById('feed').innerHTML = lang==='fr'?`<div class="empty"><div class="empty-icon">❌</div><p>server.js inaccessible (port 3002)</p>`:`<div class="empty"><div class="empty-icon">❌</div><p>server.js unreachable (port 3002)</p>`+`<p style="font-size:12px;color:var(--text2);margin-top:8px">${esc(err.message)}</p></div>`;
+  }
+}
+
+// ── Période / Chat ─────────────────────────────────────────────────────────
+function setPeriod(p){
+  activePeriod = p;
+  document.querySelectorAll('.period-tab').forEach(t=>t.classList.toggle('active', t.dataset.period===p));
+  loadData();
+}
+function setChat(c){
+  activeChat = c;
+  document.querySelectorAll('.chat-tab').forEach(t=>t.classList.toggle('active', t.dataset.chat===c));
+  applyFilters();
+}
+function buildChatTabs(){
+  const chats = [...new Set(allRains.map(r=>r.chatId).filter(Boolean))];
+  let html = `<div class="chat-tab ${activeChat==='all'?'active':''}" onclick="setChat('all')" data-chat="all">🌍 Tous</div>`;
+  chats.forEach(id=>{
+    const info = getChatInfo(id);
+    html += `<div class="chat-tab ${activeChat===id?'active':''}" onclick="setChat('${esc(id)}')" data-chat="${esc(id)}">${info.flag} ${info.name}</div>`;
+  });
+  document.getElementById('chat-tabs').innerHTML = html;
+}
+
+// ── Filtres + Render feed ──────────────────────────────────────────────────
+function applyFilters(){
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const sort   = document.getElementById('sort-select').value;
+
+  filteredRains = allRains.filter(r=>{
+    if(activeChat!=='all' && r.chatId!==activeChat) return false;
+    if(search && !(r.sender||'').toLowerCase().includes(search) &&
+       !(r.recipients||[]).join(',').toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  if(sort==='amount') filteredRains.sort((a,b)=>(parseFloat(b.usdTotal)||0)-(parseFloat(a.usdTotal)||0));
+  else if(sort==='nb') filteredRains.sort((a,b)=>(b.nb||b.recipients?.length||0)-(a.nb||a.recipients?.length||0));
+
+  document.getElementById('filter-count').textContent = `${filteredRains.length.toLocaleString()} résultats`;
+  renderFeed();
+}
+
+function renderFeed(){
+  const feed = document.getElementById('feed');
+  if(!filteredRains.length){
+    feed.innerHTML = `<div class="empty"><div class="empty-icon">🌧</div><p>${(document.documentElement.getAttribute('lang')||'fr')==='fr'?'Aucune rain pour ce filtre':'No rain found for this filter'}</p></div>`;
+    return;
+  }
+
+  const lang=document.documentElement.getAttribute('lang')||'fr';
+  let html = `<div class="section-title">${lang==='fr'?'🌧 Feed des rains':'🌧 Rain feed'}</div>`;
+  filteredRains.slice(0,200).forEach((r,i)=>{
+    const info   = getChatInfo(r.chatId);
+    const usd    = parseFloat(r.usdTotal)||0;
+    const nb     = r.nb || (r.recipients||[]).length || 0;
+    const emoji  = rainEmoji(usd);
+    const isMega = usd >= MEGA_USD;
+    const isBig  = usd >= ALERT_USD;
+    const recips = (r.recipients||[]).slice(0,5).join(', ') + ((r.recipients||[]).length>5?'...':'');
+
+    html += `<div class="rain-card ${isMega?'mega':isBig?'big':''} ${i<3?'new':''}">
+      <div class="rain-emoji">${emoji}</div>
+      <div class="rain-body">
+        <div class="rain-top">
+          <span class="rain-sender">${esc(r.sender||'?')}</span>
+          <span class="rain-chat-tag">${info.flag} ${info.name}</span>
+          <span class="rain-time">${timeAgo(r.ts)}</span>
+        </div>
+        <div class="rain-recipients">→ ${nb} joueurs${recips?' · '+esc(recips):''}</div>
+      </div>
+      <div class="rain-right">
+        <div class="rain-amount ${isMega?'mega':''}">${usd>0?fmtUsd(usd):'—'}</div>
+        <div class="rain-currency">${r.currency||''}</div>
+        ${r.usdEach?`<div class="rain-per">${fmtUsd(r.usdEach)}/joueur</div>`:''}
+        <div class="rain-nb">👥 ${nb}</div>
+      </div>
+    </div>`;
+  });
+
+  feed.innerHTML = html;
+}
+
+// ── Stats ──────────────────────────────────────────────────────────────────
+function updateStats(){
+  if(!allRains.length) return;
+
+  const counts = {};
+  allRains.forEach(r=>{counts[r.sender||'?']=(counts[r.sender||'?']||0)+1;});
+  const top = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('s-top-rainer').textContent = top?.[0]?.substring(0,10)||'—';
+  document.getElementById('s-top-rainer-count').textContent = top?`${top[1]} rains`:'';
+
+  const usdVals = allRains.map(r=>parseFloat(r.usdTotal)||0).filter(v=>v>0);
+  const avg = usdVals.length ? usdVals.reduce((s,v)=>s+v,0)/usdVals.length : 0;
+  document.getElementById('s-avg').textContent = avg>0?fmtUsd(avg):'—';
+
+  const record = allRains.reduce((best,r)=>(parseFloat(r.usdTotal)||0)>(parseFloat(best.usdTotal)||0)?r:best, {});
+  document.getElementById('s-record').textContent = record.usdTotal?fmtUsd(record.usdTotal):'—';
+  document.getElementById('s-record-who').textContent = record.sender||'';
+}
+
+// ── Leaderboards ───────────────────────────────────────────────────────────
+function updateLeaderboards(){
+  const medals = ['🥇','🥈','🥉'];
+
+  // Top rainers par volume USD
+  const rainers = {};
+  allRains.forEach(r=>{
+    const n = r.sender||'?';
+    if(!rainers[n]) rainers[n]={name:n,count:0,usd:0};
+    rainers[n].count++;
+    rainers[n].usd += parseFloat(r.usdTotal)||0;
+  });
+  const topRainers = Object.values(rainers).sort((a,b)=>b.usd-a.usd).slice(0,10);
+  document.getElementById('lb-rainers').innerHTML = topRainers.map((u,i)=>`
+    <div class="lb-row">
+      <span class="lb-rank">${medals[i]||`#${i+1}`}</span>
+      <span class="lb-name">${esc(u.name)}</span>
+      <div style="text-align:right">
+        <div class="lb-val" style="color:var(--green)">${fmtUsd(u.usd)}</div>
+        <div class="lb-sub">${u.count} rains</div>
+      </div>
+    </div>`).join('') || '<div style="padding:16px;text-align:center;font-size:12px;color:var(--text2)">—</div>';
+
+  // Top receveurs
+  const recvCount = {};
+  allRains.forEach(r=>{
+    (r.recipients||[]).forEach(name=>{
+      if(!name)return;
+      recvCount[name]=(recvCount[name]||0)+1;
+    });
+  });
+  const topRecv = Object.entries(recvCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  document.getElementById('lb-recv').innerHTML = topRecv.map(([name,count],i)=>`
+    <div class="lb-row">
+      <span class="lb-rank">${medals[i]||`#${i+1}`}</span>
+      <span class="lb-name">${esc(name)}</span>
+      <div class="lb-val" style="color:var(--blue)">${count}</div>
+    </div>`).join('') || '<div style="padding:16px;text-align:center;font-size:12px;color:var(--text2)">—</div>';
+}
+
+// ── Stats par chat ─────────────────────────────────────────────────────────
+function updateChatStats(){
+  const chatData = {};
+  allRains.forEach(r=>{
+    const id = r.chatId||'?';
+    if(!chatData[id]) chatData[id]={count:0,usd:0};
+    chatData[id].count++;
+    chatData[id].usd += parseFloat(r.usdTotal)||0;
+  });
+  const sorted = Object.entries(chatData).sort((a,b)=>b[1].usd-a[1].usd);
+  const maxUsd = sorted[0]?.[1]?.usd || 1;
+
+  document.getElementById('chat-stats').innerHTML = sorted.map(([id,d])=>{
+    const info = getChatInfo(id);
+    const pct = Math.round(d.usd/maxUsd*100);
+    return `<div class="lb-row">
+      <span style="font-size:16px">${info.flag}</span>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+          <span class="lb-name">${info.name}</span>
+          <span class="lb-val" style="color:var(--green)">${fmtUsd(d.usd)}</span>
+        </div>
+        <div style="height:3px;background:var(--border);border-radius:2px">
+          <div style="height:3px;background:var(--green);border-radius:2px;width:${pct}%"></div>
+        </div>
+        <div class="lb-sub" style="margin-top:2px">${d.count} rains</div>
+      </div>
+    </div>`;
+  }).join('') || '<div style="padding:16px;text-align:center;font-size:12px;color:var(--text2)">—</div>';
+}
+
+// ── Charts ─────────────────────────────────────────────────────────────────
+function updateHourChart(){
+  const hours = Array(24).fill(0);
+  const since24h = Date.now() - 86400000;
+  allRains.filter(r=>r.ts>since24h).forEach(r=>{
+    hours[new Date(r.ts).getHours()]++;
+  });
+  const ctx = document.getElementById('hour-chart');
+  if(!ctx)return;
+  if(hourChart)hourChart.destroy();
+  hourChart = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:hours.map((_,i)=>`${i}h`),
+      datasets:[{data:hours,backgroundColor:'rgba(0,255,136,.35)',borderColor:'#00ff88',borderWidth:1,borderRadius:3}]
+    },
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#3a5a6a',font:{size:9}},grid:{color:'rgba(26,45,61,.5)'}},y:{ticks:{color:'#3a5a6a',font:{size:10}},grid:{color:'rgba(26,45,61,.5)'}}}}
+  });
+}
+
+function updateCurrencyChart(){
+  const currencies = {};
+  allRains.forEach(r=>{
+    const c=(r.currency||'AUTRE').toUpperCase();
+    currencies[c]=(currencies[c]||0)+(parseFloat(r.usdTotal)||0);
+  });
+  const sorted = Object.entries(currencies).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const ctx = document.getElementById('currency-chart');
+  if(!ctx)return;
+  if(currencyChart)currencyChart.destroy();
+  const colors = ['#00d4ff','#00ff88','#ffd700','#ff8c00','#a855f7','#ff3355'];
+  currencyChart = new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      labels:sorted.map(e=>e[0]),
+      datasets:[{data:sorted.map(e=>e[1]),backgroundColor:colors,borderWidth:0}]
+    },
+    options:{responsive:true,plugins:{legend:{position:'bottom',labels:{color:'#6a8a9a',font:{size:10},boxWidth:10,padding:8}}}}
+  });
+}
+
+// ── Records ────────────────────────────────────────────────────────────────
+function updateRecords(){
+  if(!allRains.length)return;
+
+  const record = allRains.reduce((b,r)=>(parseFloat(r.usdTotal)||0)>(parseFloat(b.usdTotal)||0)?r:b,{});
+  const mostNb = allRains.reduce((b,r)=>(r.nb||0)>(b.nb||0)?r:b,{});
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const todayRains = allRains.filter(r=>r.ts>=todayStart.getTime());
+  const todayTop = todayRains.reduce((b,r)=>(parseFloat(r.usdTotal)||0)>(parseFloat(b.usdTotal)||0)?r:b,{});
+  const last = allRains[0];
+
+  const lang2=document.documentElement.getAttribute('lang')||'fr';
+  document.getElementById('records-body').innerHTML = `
+    <div class="lb-row"><span style="font-size:18px">💎</span><div style="flex:1"><div style="font-size:10px;color:var(--text2)">${lang2==='fr'?'Record absolu':'All-time record'}</div><div style="font-size:13px;font-weight:700">${esc(record.sender||'?')}</div></div><div class="lb-val" style="color:var(--amber)">${fmtUsd(record.usdTotal)}</div></div>
+    <div class="lb-row"><span style="font-size:18px">👥</span><div style="flex:1"><div style="font-size:10px;color:var(--text2)">${lang2==='fr'?'Plus de joueurs':'Most players'}</div><div style="font-size:13px;font-weight:700">${esc(mostNb.sender||'?')}</div></div><div class="lb-val" style="color:var(--blue)">${mostNb.nb||0}</div></div>
+    <div class="lb-row"><span style="font-size:18px">📅</span><div style="flex:1"><div style="font-size:10px;color:var(--text2)">Meilleure aujourd'hui</div><div style="font-size:13px;font-weight:700">${esc(todayTop.sender||'—')}</div></div><div class="lb-val" style="color:var(--green)">${fmtUsd(todayTop.usdTotal)}</div></div>
+    <div class="lb-row"><span style="font-size:18px">⚡</span><div style="flex:1"><div style="font-size:10px;color:var(--text2)">${lang2==='fr'?'Dernière rain':'Last rain'}</div><div style="font-size:13px;font-weight:700">${esc(last?.sender||'?')}</div></div><div class="lb-sub">${timeAgo(last?.ts||0)}</div></div>
+  `;
+}
+
+// ── Alertes ────────────────────────────────────────────────────────────────
+function showRainAlert(r){
+  const usd = parseFloat(r.usdTotal)||0;
+  if(usd < ALERT_USD) return;
+
+  if(usd >= MEGA_USD){
+    showOverlay(r, usd);
+  } else {
+    showFlash(r, usd);
+  }
+}
+
+function showFlash(r, usd){
+  const info = getChatInfo(r.chatId);
+  const isMega = usd >= MEGA_USD;
+  const el = document.createElement('div');
+  el.className = `rain-flash ${isMega?'mega':''}`;
+  el.innerHTML = `
+    <div class="flash-emoji">${rainEmoji(usd)}</div>
+    <div class="flash-sender">${esc(r.sender||'?')}</div>
+    <div class="flash-detail">${r.nb||0} joueurs · ${info.flag} ${info.name}</div>
+    <div class="flash-amount ${isMega?'mega':''}">${fmtUsd(usd)}</div>
+  `;
+  const container = document.getElementById('flash-container');
+  container.appendChild(el);
+  setTimeout(()=>{
+    el.style.animation='flashOut .3s ease forwards';
+    setTimeout(()=>el.remove(),300);
+  },5000);
+}
+
+function showOverlay(r, usd){
+  const info = getChatInfo(r.chatId);
+  const isUber = usd >= UBER_USD;
+  const el = document.createElement('div');
+  el.className = `mega-overlay ${isUber?'uber':''}`;
+  const alertLang=document.documentElement.getAttribute('lang')||'fr';
+  el.innerHTML = `
+    <div class="mo-emoji">${isUber?'🚀':'🌊'}</div>
+    <div class="mo-title">${isUber?(alertLang==='fr'?'MEGA RAIN !':'MEGA RAIN!'):(alertLang==='fr'?'GROSSE RAIN !':'BIG RAIN!')}</div>
+    <div class="mo-sender">${esc(r.sender||'?')}</div>
+    <div class="mo-amount">${fmtUsd(usd)}</div>
+    <div class="mo-sub">${r.nb||0} joueurs · ${info.flag} ${info.name}</div>
+  `;
+  document.body.appendChild(el);
+  if(isUber) launchConfetti();
+  setTimeout(()=>el.remove(), isUber?7000:5000);
+}
+
+function launchConfetti(){
+  const colors=['#00ff88','#00d4ff','#ffd700','#ff8c00','#a855f7'];
+  for(let i=0;i<30;i++){
+    const el=document.createElement('div');
+    el.className='confetti';
+    el.style.cssText=`left:${Math.random()*100}vw;width:${5+Math.random()*8}px;height:${5+Math.random()*8}px;background:${colors[Math.floor(Math.random()*colors.length)]};border-radius:${Math.random()>.5?'50%':'2px'};animation-duration:${1+Math.random()*1.5}s;animation-delay:${Math.random()*.5}s`;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),3000);
+  }
+}
+
+// ── Polling ────────────────────────────────────────────────────────────────
+function startPolling(){
+  if(pollTimer)clearInterval(pollTimer);
+  pollTimer = setInterval(loadData, 10000);
+}
+
+function setLang(lang) {
+  document.querySelectorAll('[data-fr]').forEach(el => {
+    el.textContent = el.getAttribute(`data-${lang}`);
+  });
+  // Options du select sort
+  document.querySelectorAll('#sort-select option[data-fr]').forEach(el => {
+    el.textContent = el.getAttribute(`data-${lang}`);
+  });
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.includes(lang.toUpperCase()));
+  });
+  document.documentElement.setAttribute('lang', lang);
+  localStorage.setItem('sp_lang', lang);
+}
+
+const savedLang = localStorage.getItem('sp_lang') || 'fr';
+setLang(savedLang);
+
+loadData().then(startPolling);
+</script>
+</body>
+</html>
